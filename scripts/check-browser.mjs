@@ -122,7 +122,7 @@ async function page(options = {}, setup) {
   current.__expectedFailures = expected;
   current.__weatherRequests = 0;
   if (options.weatherFailure) expected.push('api.open-meteo.com');
-  await current.route('https://api.open-meteo.com/**', route => {
+  if (!options.weatherLive) await current.route('https://api.open-meteo.com/**', route => {
     owner.__weatherRequests++;
     return route.fulfill({ status: options.weatherFailure ? 503 : 200, contentType: 'application/json', body: JSON.stringify({
       current_units: { temperature_2m: '°C' },
@@ -1099,6 +1099,7 @@ try {
     await current.waitForFunction(() => document.querySelector('.weather-temp')?.textContent === '54°F');
     check('Real weather renderer uses the deterministic network fixture', /Chicago.*Partly cloudy/.test(await current.locator('.weather-copy').textContent()) && current.__weatherRequests === 1);
     check('Weather includes adjacent provider attribution', await current.locator('.weather-source').getAttribute('href') === 'https://open-meteo.com/');
+    await current.screenshot({ path: out + 'personal-trial-dock.jpg', quality: 90 });
     for (const width of [1920, 1280]) {
       await current.setViewportSize({ width, height: width * 9 / 16 });
       for (const layout of ['dock', 'list']) {
@@ -1118,10 +1119,13 @@ try {
       await scene('home');
     }
     await look({ layout: 'dock' }); await group('layout');
+    check('All four layout sections clear the footer hint', await current.locator('.appearance-rows').evaluate(e => e.getBoundingClientRect().bottom < document.querySelector('.appearance-desc').getBoundingClientRect().top));
+    await current.screenshot({ path: out + 'personal-trial-layout.jpg', quality: 90 });
     await choice('dockStyle', 'classic'); await nav('back', 'back');
     check('Classic dock is still available', await current.locator('#stage').evaluate(e => e.classList.contains('ds-classic')));
     await group('layout'); await choice('dockStyle', 'tiles');
     await group('weather'); const before = await settingsSnapshot(); await nav('right');
+    await current.screenshot({ path: out + 'personal-trial-weather.jpg', quality: 90 });
     check('Focusing another weather choice does not save it', same(await settingsSnapshot(), before));
     await choice('temperature', 'celsius'); await scene('home');
     check('Celsius changes without another request', await current.locator('.weather-temp').textContent() === '12°C' && current.__weatherRequests === 1);
@@ -1147,6 +1151,14 @@ try {
     await group('weather'); await current.evaluate(() => { __failWrites = true; }); await choice('weather', 'on');
     check('Failed preference save cannot enable network requests', (await state()).look.weather === 'off' && current.__weatherRequests === 0 && (await state()).error);
   });
+  if (process.env.CLEANFRAME_LIVE_WEATHER === '1') await run('Live weather smoke check', async () => {
+    report.scope = 'Opt-in live Open-Meteo request from the Mac browser; no TV contacted.';
+    await page({ seed: undefined, mock: false, weatherLive: true });
+    await current.waitForFunction(() => document.querySelector('.weather-line')?.dataset.weatherStatus === 'ready', null, { timeout: 15000 });
+    check('Live Chicago data is displayed from the real endpoint', (await state()).weather.temperature !== null && /Chicago/.test(await current.locator('.weather-copy').textContent()));
+    await current.screenshot({ path: out + 'personal-trial-live.jpg', quality: 90 });
+    report.liveWeather = { observedAt: (await state()).weather.observedAt, temperatureCelsius: (await state()).weather.temperature, condition: (await state()).weather.condition };
+  });
   section = 'Run integrity';
   report.sourceAfter = hashes();
   check('No unexpected browser/resource failures', report.pageErrors.length === 0, report.pageErrors);
@@ -1156,7 +1168,7 @@ finally {
   await closePage();
   if (preview) await preview.close();
   report.finishedAt = new Date().toISOString();
-  writeFileSync(out + 'checks.json', JSON.stringify(report, null, 2) + '\n');
+  writeFileSync(out + (process.env.CLEANFRAME_LIVE_WEATHER === '1' ? 'live-weather.json' : 'checks.json'), JSON.stringify(report, null, 2) + '\n');
 }
-console.log(report.checks.filter(c => c.passed).length + ' checks passed; ' + report.failures.length + ' failure(s). Report: .local/qa/checks.json');
+console.log(report.checks.filter(c => c.passed).length + ' checks passed; ' + report.failures.length + ' failure(s). Report: .local/qa/' + (process.env.CLEANFRAME_LIVE_WEATHER === '1' ? 'live-weather.json' : 'checks.json'));
 if (report.failures.length) process.exitCode = 1;
