@@ -20,9 +20,9 @@ const CATALOG = IDS.map((id, i) => ({ id, name: NAMES[i], show: true, iconPath: 
 const walls = JSON.parse(readFileSync(root + 'app/assets/wallpapers/SOURCES.json', 'utf8'));
 const out = root + '.local/qa/';
 mkdirSync(out, { recursive: true });
-const sourceFiles = ['app/main.js', 'app/device.js', 'app/index.html', 'app/style.css', 'app/config.xml', 'app/assets/wallpapers/SOURCES.json', 'app/assets/wallpapers/catalog.js', 'app/assets/adaptive-ink.js', 'app/assets/icons/metrics.js'];
+const sourceFiles = ['app/main.js', 'app/weather.js', 'app/device.js', 'app/index.html', 'app/style.css', 'app/config.xml', 'app/assets/wallpapers/SOURCES.json', 'app/assets/wallpapers/catalog.js', 'app/assets/adaptive-ink.js', 'app/assets/icons/metrics.js'];
 const hashes = () => Object.fromEntries(sourceFiles.map(f => [f, createHash('sha256').update(readFileSync(root + f)).digest('hex')]));
-const report = { scope: 'Production UI in Chromium; mock public Tizen API only; no TV contacted.', sourceBefore: hashes(), checks: [], failures: [], pageErrors: [], expectedNetworkFailures: [] };
+const report = { scope: 'Production UI in Chromium; public Tizen API and weather network fixtures; no TV or external weather service contacted.', sourceBefore: hashes(), checks: [], failures: [], pageErrors: [], expectedNetworkFailures: [] };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const baseline = (patch = {}) => ({ dock: PRIMARY.slice(), wallpaper: walls[0].id, mode: 'fixed', lastApp: 'netflix', theme: 'shore', ...patch });
 let preview, current, section = '';
@@ -120,6 +120,15 @@ async function page(options = {}, setup) {
   current.setDefaultTimeout(10000);
   const expected = [];
   current.__expectedFailures = expected;
+  current.__weatherRequests = 0;
+  if (options.weatherFailure) expected.push('api.open-meteo.com');
+  await current.route('https://api.open-meteo.com/**', route => {
+    owner.__weatherRequests++;
+    return route.fulfill({ status: options.weatherFailure ? 503 : 200, contentType: 'application/json', body: JSON.stringify({
+      current_units: { temperature_2m: '°C' },
+      current: { temperature_2m: 12, weather_code: 2, is_day: 1, time: Math.floor(Date.now() / 1000) }
+    }) });
+  });
   current.on('pageerror', error => report.pageErrors.push({ section, error: error.message }));
   current.on('response', response => { if (response.status() >= 400 && !expected.some(s => response.url().includes(s))) report.pageErrors.push({ section, status: response.status(), url: response.url() }); });
   current.on('requestfailed', request => {
@@ -402,7 +411,7 @@ try {
         const scale = document.getElementById('stage').getBoundingClientRect().width / 1920;
         return elements.map(e => (e.querySelector('.ico').getBoundingClientRect().left - e.querySelector('.settings-group-copy').getBoundingClientRect().right) / scale);
       });
-      check('Settings group arrows stay separate from their copy at ' + width, groups.length === 6 && groups.every(gap => gap >= 31.5), groups);
+      check('Settings group arrows stay separate from their copy at ' + width, groups.length === 7 && groups.every(gap => gap >= 31.5), groups);
       await wallpaper();
       const caption = await current.locator('.wallpaper-preview-name').evaluate(e => {
         const scale = document.getElementById('stage').getBoundingClientRect().width / 1920;
@@ -594,11 +603,12 @@ try {
   });
   await run('Settings overview and visible choices', async () => {
     await page(); await scene('settings');
-    const expected = ['settings.group.background', 'settings.group.layout', 'settings.group.typography', 'settings.group.focus', 'settings.editor', 'settings.group.samsung'];
-    check('Overview has all six settings groups', same((await call('actions')).filter(a => expected.includes(a)).sort(), expected.slice().sort()));
+    const expected = ['settings.group.background', 'settings.group.layout', 'settings.group.typography', 'settings.group.focus', 'settings.group.weather', 'settings.editor', 'settings.group.samsung'];
+    check('Overview has all seven settings groups', same((await call('actions')).filter(a => expected.includes(a)).sort(), expected.slice().sort()));
     const specs = {
       background: { bg: ['dark', 'light', 'photo'] },
-      layout: { layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], controls: ['icons', 'both', 'text'] },
+      layout: { layout: ['list', 'dock'], dockStyle: ['classic', 'tiles'], apps: ['icons', 'both', 'text'], controls: ['icons', 'both', 'text'] },
+      weather: { weather: ['on', 'off'], temperature: ['fahrenheit', 'celsius'] },
       typography: { font: (await state()).fonts.available },
       focus: { focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'] }
     };
@@ -628,7 +638,7 @@ try {
   });
   await run('Settings focus never changes the applied Home', async () => {
     await page();
-    for (const name of ['background', 'layout', 'typography', 'focus', 'samsung']) {
+    for (const name of ['background', 'layout', 'typography', 'focus', 'weather', 'samsung']) {
       await group(name); const before = await settingsSnapshot();
       const visited = new Set();
       for (const direction of ['right', 'right', 'down', 'left', 'left', 'down', 'right', 'right', 'down', 'left', 'up', 'up', 'up', 'right']) {
@@ -1082,6 +1092,60 @@ try {
     check('Browser launch honestly requires TV', /TV/.test(await current.locator('#stage').innerText()));
     await nav('back'); await library();
     check('Browser All Apps has no installed fixtures', /TV/.test(await current.locator('#stage').innerText()) && !(await current.locator('[data-action^="apps.open."]').count()));
+  });
+  await run('Personal trial dock and weather', async () => {
+    await page({ seed: undefined });
+    check('New setup uses Tiles and Apple TV first, with Chicago Fahrenheit weather', (await state()).look.dockStyle === 'tiles' && (await state()).dock[0] === 'appletv' && (await state()).look.weather === 'on' && (await state()).look.temperature === 'fahrenheit');
+    await current.waitForFunction(() => document.querySelector('.weather-temp')?.textContent === '54°F');
+    check('Real weather renderer uses the deterministic network fixture', /Chicago.*Partly cloudy/.test(await current.locator('.weather-copy').textContent()) && current.__weatherRequests === 1);
+    check('Weather includes adjacent provider attribution', await current.locator('.weather-source').getAttribute('href') === 'https://open-meteo.com/');
+    for (const width of [1920, 1280]) {
+      await current.setViewportSize({ width, height: width * 9 / 16 });
+      for (const layout of ['dock', 'list']) {
+        await look({ layout });
+        const overlap = await current.locator('#caption').evaluate(e => {
+          const a = e.getBoundingClientRect(), u = document.querySelector('#utils').getBoundingClientRect();
+          return a.left < u.right && a.right > u.left && a.top < u.bottom && a.bottom > u.top;
+        });
+        check('Weather stays clear of utilities at ' + width + ' in ' + layout, !overlap);
+      }
+      await scene('settings');
+      const fit = await current.locator('.settings-group').evaluateAll(items => {
+        const hint = document.querySelector('.settings-overview-hint').getBoundingClientRect();
+        return items.every(e => e.getBoundingClientRect().bottom <= hint.top);
+      });
+      check('Seven settings groups fit at ' + width, fit);
+      await scene('home');
+    }
+    await look({ layout: 'dock' }); await group('layout');
+    await choice('dockStyle', 'classic'); await nav('back', 'back');
+    check('Classic dock is still available', await current.locator('#stage').evaluate(e => e.classList.contains('ds-classic')));
+    await group('layout'); await choice('dockStyle', 'tiles');
+    await group('weather'); const before = await settingsSnapshot(); await nav('right');
+    check('Focusing another weather choice does not save it', same(await settingsSnapshot(), before));
+    await choice('temperature', 'celsius'); await scene('home');
+    check('Celsius changes without another request', await current.locator('.weather-temp').textContent() === '12°C' && current.__weatherRequests === 1);
+    await current.reload(); await ready();
+    check('Settings and cache survive reload', (await state()).look.dockStyle === 'tiles' && (await state()).look.temperature === 'celsius' && current.__weatherRequests === 1);
+    await current.evaluate(() => __setHidden(true));
+    check('Hidden app stops its weather controller', (await state()).weather.status === 'off');
+    await current.evaluate(() => __setHidden(false));
+    check('Visible return reuses fresh data', (await state()).weather.status === 'ready' && current.__weatherRequests === 1);
+    await group('weather'); await choice('weather', 'off'); await scene('home');
+    check('Weather can be disabled completely', !(await current.locator('.weather-line').count()) && (await state()).weather.status === 'off');
+    await current.reload(); await ready();
+    check('Disabled weather stays off on reload', current.__weatherRequests === 1 && !(await current.locator('.weather-line').count()));
+    await closePage();
+    await page({ seed: undefined, weatherFailure: true });
+    await current.waitForFunction(() => document.querySelector('.weather-line')?.dataset.weatherStatus === 'unavailable');
+    const focus = (await state()).focusAction; await current.keyboard.press('ArrowRight');
+    check('Unavailable weather leaves remote navigation responsive', (await state()).focusAction !== focus && (await call('where')).focusCount === 1);
+    check('Unavailable weather never invents a temperature', !(await current.locator('.weather-temp').count()) && /unavailable/.test(await current.locator('.weather-copy').textContent()));
+    await closePage();
+    await page();
+    check('Existing installations keep Classic and make no weather request until enabled', (await state()).look.dockStyle === 'classic' && (await state()).look.weather === 'off' && current.__weatherRequests === 0);
+    await group('weather'); await current.evaluate(() => { __failWrites = true; }); await choice('weather', 'on');
+    check('Failed preference save cannot enable network requests', (await state()).look.weather === 'off' && current.__weatherRequests === 0 && (await state()).error);
   });
   section = 'Run integrity';
   report.sourceAfter = hashes();

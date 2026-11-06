@@ -308,6 +308,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .settings-group>.ico{width:30px;height:30px;color:var(--mute)}
 .settings-group.is-focus{background:var(--solid);color:var(--solid-ink)}
 .settings-group.is-focus .settings-group-value,.settings-group.is-focus>.ico{color:var(--solid-mute)}
+/* Seven overview groups fit above the existing remote hint. */
+.at-settings .settings-group{height:96px;padding-top:8px;padding-bottom:8px}
+.at-settings .settings-group-name{font-size:36px;line-height:44px}
+.at-settings .settings-group-value{font-size:24px;line-height:32px}
 .settings-overview-hint{position:absolute;left:140px;top:968px;display:flex;align-items:center;font-size:26px;line-height:36px;color:var(--mute)}
 .remote-key{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:34px;padding:0 10px;border:1.5px solid currentColor;border-radius:17px;font-size:21px;line-height:28px;font-weight:600;letter-spacing:0}
 .lay-note{position:absolute;left:140px;top:608px;max-width:1040px;font-size:30px;line-height:42px;font-weight:500;color:var(--mute)}
@@ -633,3 +637,44 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .l-list .quiet-utils.is-text .u-content>*+*{margin-left:0;margin-right:0}
 .quiet-utils.is-text .u-content>*+*{margin-left:0}
 .l-list .quiet-utils.is-text .u .u-content>*+*{margin-right:0}
+
+/* Optional Tiles Dock. Surfaces sit inside the existing app boxes; shelf geometry,
+   cached materials, logo metrics and the scroll/focus anchors stay unchanged. */
+.ds-tiles.l-dock{--card-surface:linear-gradient(155deg,rgba(43,49,58,.94),rgba(24,29,36,.96));--card-focus:linear-gradient(155deg,rgba(76,85,98,.98),rgba(48,57,70,.98));--card-edge:rgba(255,255,255,.16);--card-ring:rgba(255,255,255,.88);--card-shadow:rgba(0,0,0,.20)}
+.ds-tiles.l-dock.bg-light{--card-surface:linear-gradient(155deg,#fffefa,#e8e5de);--card-focus:linear-gradient(155deg,#fffefa,#f5f2eb);--card-edge:rgba(29,26,22,.10);--card-ring:rgba(29,26,22,.72);--card-shadow:rgba(29,26,22,.14)}
+.ds-tiles.l-dock .dock .plate{opacity:0;background:none;box-shadow:none}
+.ds-tiles.l-dock .dock .tile-content{opacity:1;transform:none}
+.ds-tiles.l-dock .dock .tile-content::before,.ds-tiles.l-dock .dock .tile-content::after{content:"";position:absolute;z-index:0;left:8px;right:8px;top:4px;bottom:4px;border-radius:24px;pointer-events:none}
+.ds-tiles.l-dock .dock .tile-content::before{background:var(--card-surface);box-shadow:inset 0 1px 0 var(--card-edge),0 3px 8px var(--card-shadow)}
+.ds-tiles.l-dock .dock .tile-content::after{background:var(--card-focus);box-shadow:inset 0 1px 0 var(--card-edge),0 0 0 2px var(--card-ring),0 6px 12px var(--card-shadow);opacity:0;transition:opacity 160ms linear}
+.ds-tiles.l-dock .dock .tile-content>*{z-index:1}
+.ds-tiles.l-dock .dock .tile .mark,.ds-tiles.l-dock .dock .tile .label{opacity:.9;transform:none}
+.ds-tiles.l-dock .dock .tile.is-focus,.ds-tiles.l-dock .dock .tile.is-lifted{z-index:2}
+.ds-tiles.l-dock .dock .tile.is-focus .tile-content,.ds-tiles.l-dock .dock .tile.is-lifted .tile-content{transform:translateY(-4px) scale(1.025)}
+.ds-tiles.l-dock .dock .tile.is-focus .tile-content::after,.ds-tiles.l-dock .dock .tile.is-lifted .tile-content::after{opacity:1}
+.ds-tiles.l-dock .dock .tile.is-sel .tile-content::after{opacity:.35}
+.ds-tiles.l-dock .dock .tile.is-focus .mark,.ds-tiles.l-dock .dock .tile.is-focus .label,.ds-tiles.l-dock .dock .tile.is-lifted .mark,.ds-tiles.l-dock .dock .tile.is-lifted .label{opacity:1}
+.ds-tiles.l-dock .dock .tile.is-press .mark{animation:none}
+.ds-tiles.l-dock .dock .tile.is-press .tile-content{transform:translateY(-1px) scale(.99)}
+.ds-tiles.l-dock.a-text .dock .tile-content::before,.ds-tiles.l-dock.a-text .dock .tile-content::after{border-radius:20px}
+@media(prefers-reduced-motion:reduce){.ds-tiles.l-dock .dock .tile-content{transform:none!important}.ds-tiles.l-dock .dock .tile-content::after{transition:opacity 120ms linear!important}}
+
+/* Home weather is secondary to the clock. The small local backing protects the
+   source line on varied photos without live blur or new photo-specific assets. */
+#caption .weather-line{display:flex;flex-direction:column;align-self:flex-start;max-width:640px;margin-top:4px;padding:4px 12px;border-radius:14px;font-family:Manrope,Arial,sans-serif;font-size:28px;line-height:36px;font-weight:500;letter-spacing:-.2px;color:var(--ink);background:rgba(14,17,22,.62);text-shadow:none}
+#caption .weather-main{display:flex;align-items:center;max-width:100%;min-width:0;white-space:nowrap}
+#caption .weather-main>*+*{margin-left:10px}
+#caption .weather-icon{display:block;flex:none;width:30px;height:30px}
+#caption .weather-icon svg{display:block;width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#caption .weather-temp{flex:none;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+#caption .weather-copy{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:26px;line-height:36px;white-space:nowrap}
+#caption .weather-source{align-self:flex-start;max-width:100%;margin-top:2px;font-size:20px;line-height:24px;font-weight:400;letter-spacing:0;color:inherit;text-decoration:underline;white-space:nowrap}
+#caption .weather-source:focus{outline:2px solid currentColor;outline-offset:2px}
+.l-list #caption .weather-line{align-self:flex-end;align-items:flex-end}
+.l-list #caption .weather-source{align-self:flex-end}
+.bg-photo.l-list #caption .weather-line{color:var(--tr-ink)}
+.bg-photo.l-dock #caption .weather-line{color:var(--tl-ink,var(--ink))}
+.bg-photo.l-list.tr-dark #caption .weather-line,.bg-photo.l-dock.adaptive-tl-dark #caption .weather-line,.bg-photo.l-list.has-clock-ink #caption .weather-line,.bg-photo.l-dock.has-dock-clock-ink #caption .weather-line{background:rgba(255,252,248,.88)}
+.bg-photo.l-list.has-clock-ink #caption .weather-line{color:var(--clock-ink)}
+.bg-photo.l-dock.has-dock-clock-ink #caption .weather-line{color:var(--dock-clock-ink)}
+.bg-dark #caption .weather-line,.bg-light #caption .weather-line{padding-left:0;padding-right:0;background:none;color:var(--mute)}

@@ -1,3 +1,35 @@
+# CleanFrame — personal trial
+
+A small, maintainable fork of [nthnclrk/CleanFrame](https://github.com/nthnclrk/CleanFrame), based on **v0.7.0**. The trial branch is **`trial/personal-home`**.
+
+**[Start here: Mac preview and TV trial guide](docs/personal-trial.md).** Try the interface on a Mac first, then install your own signed build as a normal TV app. The optional native Home/startup helper is outside this trial.
+
+| Feature | Where to try it |
+| --- | --- |
+| Apple TV-inspired rounded cards, with Classic available | Settings → Layout → Dock style → Tiles / Classic |
+| Chicago weather, Fahrenheit / Celsius, with an Off switch | Settings → Weather |
+| Fifteen bundled photos with optional rotation | Settings → Background → Rotation |
+| App ordering, installed-app discovery, HDMI inputs and public fonts | Existing CleanFrame settings and controls |
+
+A fresh setup uses Tiles, Chicago weather in Fahrenheit, and six initial app shortcuts with Apple TV first. Existing saved layouts keep their order and Classic style; weather stays off until enabled. Photo rotation stays Fixed until selected. Installed apps still need to be discovered and verified on the actual TV.
+
+Weather uses Chicago city coordinates, no API key and no location permission. It refreshes every fifteen minutes while the app is visible, stops when hidden or disabled, caches successful responses, and labels old data or an unavailable service. Temperature is converted and rounded for display. Data by [Open-Meteo](https://open-meteo.com/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the provider's free endpoint is for personal/non-commercial use. This adds one external service; the interface and bundled photos continue to work offline.
+
+The dock takes visual inspiration from [HomeTV](https://github.com/alexrdzs/HomeTV); the weather idea follows [Goog-apple-TV-OS](https://github.com/knakamura13/Goog-apple-TV-OS). The implementation stays on CleanFrame's existing remote navigation and pre-rendered materials. Home Assistant, media servers, online photo feeds and native Home-button routing are later decisions.
+
+```sh
+git clone --branch trial/personal-home https://github.com/Loshay1/CleanFrame.git
+cd CleanFrame
+npm ci
+npm run dev:public
+```
+
+Open [localhost:4795/home/](http://localhost:4795/home/). Use arrows, Enter and Escape. The full [trial guide](docs/personal-trial.md) includes verification status, your own signing identity, TV installation and rollback.
+
+## Upstream documentation
+
+The original project's documentation follows. Its first-person device reports describe the original maintainer's reference hardware.
+
 # CleanFrame
 
 A quieter home screen for Samsung The Frame. Your apps, a photograph and the time, with an interface made for the TV remote.
