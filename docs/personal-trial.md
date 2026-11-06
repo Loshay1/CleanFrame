@@ -37,7 +37,7 @@ Use **arrow keys** to move, **Enter** to select, and **Escape** to go back. Clic
 | Feature | What to try |
 | --- | --- |
 | Apple TV-inspired dock | In **Settings → Layout**, select **Dock** and the **Tiles** style. Compare with **Classic**. This changes CleanFrame's presentation; it does not add tvOS or Apple TV hardware features. |
-| Weather | Enable weather in Settings. The trial uses **Chicago**, defaults to **°F**, and offers **°C** and an off switch. Data comes from [Open-Meteo](https://open-meteo.com/en/docs); internet access is required. Weather in the Mac preview does not prove the TV can fetch it. |
+| Weather | **Settings → Weather** uses **Chicago** and offers Fahrenheit, Celsius and an off switch. New setups enable it in °F; existing saved setups keep it off until selected. Data comes from [Open-Meteo](https://open-meteo.com/en/docs); internet access is required. Weather in the Mac preview does not prove the TV can fetch it. |
 | Photos | Choose **Settings → Background → Photo**, then **Wallpaper** to select one of the 15 bundled images. |
 | Rotation | **Settings → Background → Rotation** offers **Fixed**, **Each time Home opens**, **Every 5 minutes**, **Every 15 minutes**, and **Every hour**. Start with Fixed, then try 5 minutes. |
 | Apps | Use **Settings → Apps on Home** to reorder/remove shortcuts. The TV can discover installed consumer apps; the browser cannot establish their availability. |
@@ -68,6 +68,15 @@ Official instructions: [Tizen extension installation](https://github.com/Samsung
 ## 3. Enable Developer Mode at the TV
 
 Connect the Mac and TV to the same local network. Record both local IP addresses; the Developer Mode popup needs the **Mac's** address, while the connection tool needs the **TV's** address.
+
+To display the Mac's current IPv4 address in Terminal:
+
+```sh
+CLEANFRAME_INTERFACE="$(route -n get default | awk '/interface:/{print $2; exit}')"
+ipconfig getifaddr "$CLEANFRAME_INTERFACE"
+```
+
+If that prints nothing (for example with a VPN interface), open **System Settings → Network → the active Wi-Fi/Ethernet connection → Details → TCP/IP** and read its local IPv4 address. Read the TV's address from its network status/IP settings. Keep device addresses in ignored local configuration, not this public repository.
 
 1. Open **Home → Apps → App Settings**.
 2. Open the remote's numeric keypad with **123**; select **1, 2, 3, 4, 5** in order. Select Done if shown.
@@ -182,16 +191,21 @@ This trial does not promise that physical Home, normal power-on or Art Mode wake
 
 ### Verification record
 
-At guide preparation, the checks below were **pending for this personal trial**. Replace this table with actual evidence as the work completes; upstream results are not results for this TV.
+Verified **November 6, 2026**, on trial source commit `a72858a`. Browser and live-weather runs completed on the M4 Mac at approximately **2:13 p.m. CST (UTC−06:00)**. These are this fork's results; hardware validation remains separate.
 
 | Check | Status |
 | --- | --- |
-| Source, tool and public-package checks | Pending final local run |
-| Browser navigation, Tiles/Classic, weather states and rotation | Pending final browser run |
-| Live Open-Meteo request from the Mac | Pending observation |
+| Source and unit checks | Passed ESLint/ES5 and resource checks, 10 synthetic device tests and 9 weather tests |
+| Packaging tools and public source/export | Passed all 15 tooling tests and public-source checks; unsigned public-font widget built successfully |
+| Browser navigation, Tiles/Classic, weather states and rotation | **454 checks passed, zero failures**, in Playwright Chromium on the Mac; 1920×1080 and 1280×720 coverage |
+| Live Open-Meteo request from the Mac | Passed 3 smoke/integrity checks with a real response; screenshot inspected, including the dock and displayed Chicago weather |
 | M4 SDK execution, Samsung signing and package identity | Pending |
 | TV installation, visible launch and remote operation | Pending |
 | TV weather networking and photo rotation | Pending |
+
+The Mac's ignored `.local/qa/checks.json` and `.local/qa/live-weather.json` contain the detailed results. Weather responses in the ordinary browser suite are deterministic fixtures; the separate opt-in smoke check used the real provider. The Mac preview is a loopback service, not a publicly hosted site.
+
+`npm audit` reported three moderate advisory entries in the inherited development-only ESLint/minimatch dependency chain ([advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249)). Those packages are not part of the TV widget. This trial did not apply an unrelated major dependency change.
 
 For repeatable local validation after changes:
 
